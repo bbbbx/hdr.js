@@ -1,11 +1,12 @@
 {
   "name": "hdr.js",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "RGBE(.hdr) file reader/writer.",
   "main": "dist/hdr.js",
   "module": "dist/hdr.esm.js",
   "scripts": {
     "build": "rollup --config rollup.config.js",
+    "publish": "npm run build && npm publish . --access public",
     "test": "jest"
   },
   "keywords": [
@@ -14,6 +15,10 @@
   ],
   "author": "Venus <venus@venusworld.cn>",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bbbbx/hdr.js.git"
+  },
   "devDependencies": {
     "@rollup/plugin-typescript": "^9.0.2",
     "@types/jest": "^29.2.0",

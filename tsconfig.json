@@ -4,7 +4,7 @@
   ],
   "compilerOptions": {
     "outDir": "dist",
-    "lib": ["ES2015", "ESNext"],
+    "lib": ["DOM", "ES2015", "ESNext"],
     "typeRoots": [],
     "module": "ES6",
     "target": "ES5",

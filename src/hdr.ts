@@ -157,9 +157,118 @@ function write_run_data(s: number[], length: number, databyte: number): void {
   s.push(lengthbyte, databyte);
 }
 
-class HDR {
-  static writeHDR = write_hdr;
-  static float2rgbe = float2rgbe;
+function load(url) {
+  return new Promise((
+    resolve: (result: {
+      width: number,
+      height: number,
+      rgbFloat: Float32Array,
+    }) => void,
+    reject: (message: string) => void
+  ) => {
+    if (typeof XMLHttpRequest === 'undefined') {
+      reject('XMLHttpRequest is undefined, use HDRjs.read instead.');
+    }
+
+    const req = new XMLHttpRequest();
+    req.responseType = 'arraybuffer';
+
+    req.onload = () => {
+      if (req.status >= 400) return reject('Load successfully, but HTTP status code >= 400, status: ' + req.status);
+      const parsed = read(new Uint8Array(req.response));
+      typeof parsed === 'string' ? reject(parsed) : resolve(parsed);
+    };
+    req.onerror = (e) => {
+      reject('Failed to load: ' + url);
+    };
+
+    req.open('GET', url, true);
+    req.send();
+  });
 }
 
-export default HDR;
+function read(d8: Uint8Array) {
+  let header = '';
+  let pos = 0;
+
+  // read header
+  while (!header.match(/\n\n[^\n]+\n/g)) {
+    header += String.fromCharCode(d8[pos++])
+  }
+
+  if (!header.match(/#\?RADIANCE\n/)) {
+    return 'not a rgbe file';
+  }
+
+  // check format
+  const format = header.match(/FORMAT=(.*)$/m)[1];
+  if (format !== '32-bit_rle_rgbe') {
+    return 'unknown format: ' + format;
+  }
+
+  // parse resolution
+  const rez: string[] = header.split(/\n/).reverse()[1].split(' ');
+  const width = Number.parseFloat(rez[3]);
+  const height = Number.parseFloat(rez[1]);
+
+  // Create image
+  const img = new Uint8Array(width * height * 4);
+  let ipos = 0;
+
+  // Read all scanlines
+  for (var j=0; j<height; j++) {
+    var rgbe=d8.slice(pos,pos+=4),scanline=[];
+    if (rgbe[0]!=2||(rgbe[1]!=2)||(rgbe[2]&0x80)) {
+      var len=width,rs=0; pos-=4; while (len>0) {
+        img.set(d8.slice(pos,pos+=4),ipos); 
+        if (img[ipos]==1&&img[ipos+1]==1&&img[ipos+2]==1) {
+          for (img[ipos+3]<<rs; i>0; i--) {
+            img.set(img.slice(ipos-4,ipos),ipos);
+            ipos+=4;
+            len--
+          }
+          rs+=8;
+        } else { len--; ipos+=4; rs=0; }
+      }
+    } else {
+      if ((rgbe[2]<<8)+rgbe[3]!=width) return 'scanline width error';
+      for (var i=0;i<4;i++) {
+          var ptr=i*width,ptr_end=(i+1)*width,buf,count;
+          while (ptr<ptr_end){
+              buf = d8.slice(pos,pos+=2);
+              if (buf[0] > 128) { count = buf[0]-128; while(count-- > 0) scanline[ptr++] = buf[1]; } 
+                           else { count = buf[0]-1; scanline[ptr++]=buf[1]; while(count-->0) scanline[ptr++]=d8[pos++]; }
+          }
+      }
+      for (var i=0;i<width;i++) { img[ipos++]=scanline[i]; img[ipos++]=scanline[i+width]; img[ipos++]=scanline[i+2*width]; img[ipos++]=scanline[i+3*width]; }
+    }
+  }
+
+  return {
+    rgbFloat: rgbeToFloat(img),
+    width: width,
+    height: height,
+  }
+}
+
+function rgbeToFloat(buffer: Uint8Array, res: Float32Array = new Float32Array((buffer.byteLength >> 2) * 3)) {
+  let s: number;
+  const l = buffer.byteLength >> 2;
+  for (let i = 0; i < l; i++) {
+    s = Math.pow(2, buffer[i * 4 + 3] - (128+8));
+
+    res[i * 3 + 0] = buffer[i * 4 + 0] * s;
+    res[i * 3 + 1] = buffer[i * 4 + 1] * s;
+    res[i * 3 + 2] = buffer[i * 4 + 2] * s;
+  }
+  return res;
+}
+
+const HDRjs = Object.freeze({
+  load: load,
+  read: read,
+  write: write_hdr,
+  float2rgbe: float2rgbe,
+});
+
+export default HDRjs;
