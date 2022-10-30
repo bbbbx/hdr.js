@@ -1,12 +1,12 @@
 {
   "name": "hdr.js",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "RGBE(.hdr) file reader/writer.",
   "main": "dist/hdr.js",
   "module": "dist/hdr.esm.js",
   "scripts": {
     "build": "rollup --config rollup.config.js",
-    "publish": "npm run build && npm publish . --access public",
+    "build-and-publish": "npm run build && npm publish . --access public",
     "test": "jest"
   },
   "keywords": [
