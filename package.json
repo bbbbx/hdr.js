@@ -1,0 +1,25 @@
+{
+  "name": "hdr.js",
+  "version": "0.1.0",
+  "description": "RGBE(.hdr) file reader/writer.",
+  "main": "dist/hdr.js",
+  "module": "dist/hdr.esm.js",
+  "scripts": {
+    "build": "rollup --config rollup.config.js",
+    "test": "jest"
+  },
+  "keywords": [
+    "hdr",
+    "rgbe"
+  ],
+  "author": "Venus <venus@venusworld.cn>",
+  "license": "MIT",
+  "devDependencies": {
+    "@rollup/plugin-typescript": "^9.0.2",
+    "@types/jest": "^29.2.0",
+    "jest": "^29.2.2",
+    "rollup": "^3.2.3",
+    "ts-jest": "^29.0.3",
+    "tslib": "^2.4.0"
+  }
+}
