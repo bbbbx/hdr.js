@@ -1,5 +1,7 @@
 const typescript = require('@rollup/plugin-typescript');
 
+const isProduction = process.env.BUILD === 'production';
+
 module.exports = {
   input: 'src/hdr.ts',
   output: [
@@ -7,14 +9,18 @@ module.exports = {
       file: 'dist/hdr.js',
       name: 'HDRjs',
       format: 'umd',
-      sourcemap: true,
+      sourcemap: !isProduction,
     },
     {
       name: 'HDRjs',
       file: 'dist/hdr.esm.js',
       format: 'es',
-      sourcemap: true,
+      sourcemap: !isProduction,
     },
   ],
-  plugins: [typescript()],
+  plugins: [typescript({
+    compilerOptions: {
+      sourceMap: !isProduction,
+    },
+  })],
 };

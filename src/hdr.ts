@@ -1,5 +1,20 @@
 import frexp from './frexp';
 
+function ldexp(f: number, e) {
+  return f * Math.pow(2.0, e);
+}
+
+function rgbe2float(rgbe: Uint8Array, float: Float32Array) {
+  if (rgbe[3] !== 0) {
+    const f1 = ldexp(1.0, rgbe[3] - (128+8));
+    float[0] = rgbe[0] * f1;
+    float[1] = rgbe[1] * f1;
+    float[2] = rgbe[2] * f1;
+  } else {
+    float[0] = float[1] = float[2] = 0.0;
+  }
+}
+
 function float2rgbe(
   red: number,
   green: number,
@@ -187,81 +202,139 @@ function load(url) {
   });
 }
 
-function read(d8: Uint8Array) {
+function testMagic(uint8: Uint8Array, signature: string): boolean {
+  const l = signature.length;
+  for (let i = 0; i < l; i++) {
+    if (uint8[i] !== signature.charCodeAt(i)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function isHdr(uint8: Uint8Array): boolean {
+  let r = testMagic(uint8, '#?RADIANCE\n');
+  if (!r) {
+    r = testMagic(uint8, '#?RGBE\n');
+  }
+  return r;
+}
+
+const MAX_HEADER_LENGTH = 1024 * 10;
+const MAX_DIMENSIONS = 1 << 24;
+function read(uint8: Uint8Array) {
   let header = '';
   let pos = 0;
 
-  // read header
-  while (!header.match(/\n\n[^\n]+\n/g)) {
-    header += String.fromCharCode(d8[pos++])
+  if (!isHdr(uint8)) {
+    return 'Corrupt HDR image.';
   }
 
-  if (!header.match(/#\?RADIANCE\n/)) {
-    return 'not a rgbe file';
+  // read header
+  while (!header.match(/\n\n[^\n]+\n/g) && pos < MAX_HEADER_LENGTH) {
+    header += String.fromCharCode(uint8[pos++])
   }
 
   // check format
   const format = header.match(/FORMAT=(.*)$/m)[1];
   if (format !== '32-bit_rle_rgbe') {
-    return 'unknown format: ' + format;
+    return 'Unsupported HDR format: ' + format;
   }
 
   // parse resolution
   const rez: string[] = header.split(/\n/).reverse()[1].split(' ');
+  if (rez[0] !== '-Y' || rez[2] !== '+X') {
+    return 'Unsupported HDR format';
+  }
   const width = Number.parseFloat(rez[3]);
   const height = Number.parseFloat(rez[1]);
+  if (width > MAX_DIMENSIONS || height > MAX_DIMENSIONS) {
+    return 'Very large image (corrupt?)';
+  }
 
-  // Create image
-  const img = new Uint8Array(width * height * 4);
-  let ipos = 0;
+  let i, j;
+  let c1: number = uint8[pos];
+  let c2: number = uint8[pos + 1];
+  let len: number = uint8[pos + 2];
 
-  // Read all scanlines
-  for (var j=0; j<height; j++) {
-    var rgbe=d8.slice(pos,pos+=4),scanline=[];
-    if (rgbe[0]!=2||(rgbe[1]!=2)||(rgbe[2]&0x80)) {
-      var len=width,rs=0; pos-=4; while (len>0) {
-        img.set(d8.slice(pos,pos+=4),ipos); 
-        if (img[ipos]==1&&img[ipos+1]==1&&img[ipos+2]==1) {
-          for (img[ipos+3]<<rs; i>0; i--) {
-            img.set(img.slice(ipos-4,ipos),ipos);
-            ipos+=4;
-            len--
-          }
-          rs+=8;
-        } else { len--; ipos+=4; rs=0; }
+  // not run-length encoded, so we have to actually use THIS data as a decoded
+  // pixel (note this can't be a valid pixel--one of RGB must be >= 128)
+  const notRLE: boolean = c1 !== 2 || c2 !== 2 || !!(len & (0x80)); // not run-length encoded
+
+  const hdrData = new Float32Array(width * height * 3);
+  if (width < 8 || width >= 32768 || notRLE) { // 32768: 2^15
+    // Read flat data
+    for (j = 0; j < height; ++j) {
+      for (i=0; i < width; ++i) {
+        const rgbe = uint8.subarray(pos, pos + 4);
+        pos += 4;
+        const start = (j * width + i) * 3;
+        rgbe2float(rgbe, hdrData.subarray(start, start + 3));
       }
-    } else {
-      if ((rgbe[2]<<8)+rgbe[3]!=width) return 'scanline width error';
-      for (var i=0;i<4;i++) {
-          var ptr=i*width,ptr_end=(i+1)*width,buf,count;
-          while (ptr<ptr_end){
-              buf = d8.slice(pos,pos+=2);
-              if (buf[0] > 128) { count = buf[0]-128; while(count-- > 0) scanline[ptr++] = buf[1]; } 
-                           else { count = buf[0]-1; scanline[ptr++]=buf[1]; while(count-->0) scanline[ptr++]=d8[pos++]; }
-          }
+    }
+  } else {
+    // Read RLE-encoded data
+    let scanline: Uint8Array;
+    let c1: number;
+    let c2: number;
+    let len: number;
+    for (let j = 0; j < height; j++) {
+      c1 = uint8[pos++];
+      c2 = uint8[pos++];
+      len = uint8[pos++];
+      if (c1 !== 2 || c2 !== 2 || len & (0x80)) {
+        return 'Invalid scanline';
       }
-      for (var i=0;i<width;i++) { img[ipos++]=scanline[i]; img[ipos++]=scanline[i+width]; img[ipos++]=scanline[i+2*width]; img[ipos++]=scanline[i+3*width]; }
+
+      len = len << 8;
+      len |= uint8[pos++];
+      if (len !== width) {
+        return 'invalid decoded scanline length';
+      }
+      if (!scanline) {
+        scanline = new Uint8Array(width * 4);
+      }
+
+      let count: number;
+      let value: number;
+      for (let k = 0; k < 4; k++) {
+        let nLeft: number;
+        i = 0;
+        while ((nLeft = width - i) > 0) {
+          count = uint8[pos++];
+          if (count > 128) {
+            // is RUN
+            value = uint8[pos++];
+            count -= 128;
+            if (count > nLeft) {
+              return 'bad RLE data in HDR';
+            }
+            for (let z = 0; z < count; z++) {
+              scanline[i++ * 4 + k] = value;
+            }
+          } else {
+            // is DUMP
+            if (count > nLeft) {
+              return 'bad RLE data in HDR';
+            }
+            for (let z = 0; z < count; z++) {
+              scanline[i++ * 4 + k] = uint8[pos++];
+            }
+          }
+        }
+      }
+
+      for (let i = 0; i < width; i++) {
+        rgbe2float(scanline.subarray(i * 4), hdrData.subarray((j * width + i) * 3));
+      }
     }
   }
 
   return {
-    rgbFloat: rgbeToFloat(img),
+    rgbFloat: hdrData,
     width: width,
     height: height,
-  }
-}
-
-function rgbeToFloat(buffer: Uint8Array, res: Float32Array = new Float32Array((buffer.byteLength >> 2) * 3)) {
-  let s: number;
-  const l = buffer.byteLength >> 2;
-  for (let i = 0; i < l; i++) {
-    s = Math.pow(2, buffer[i * 4 + 3] - (128+8));
-
-    res[i * 3 + 0] = buffer[i * 4 + 0] * s;
-    res[i * 3 + 1] = buffer[i * 4 + 1] * s;
-    res[i * 3 + 2] = buffer[i * 4 + 2] * s;
-  }
-  return res;
+  };
 }
 
 const HDRjs = Object.freeze({
