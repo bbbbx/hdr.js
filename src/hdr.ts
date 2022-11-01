@@ -15,25 +15,21 @@ function rgbe2float(rgbe: Uint8Array, float: Float32Array) {
   }
 }
 
-function float2rgbe(
-  red: number,
-  green: number,
-  blue: number,
-  rgbe: Uint8Array = new Uint8Array(4),
-  start: number = 0
-): Uint8Array {
+function float2rgbe(float: Float32Array, rgbe: Uint8Array) {
+  const red = float[0];
+  const green = float[1];
+  const blue = float[2];
   const v = Math.max(red, Math.max(green, blue));
   if (v < 1e-32) {
-    rgbe[start + 0] = rgbe[start + 1] = rgbe[start + 2] = rgbe[start + 3] = 0;
+    rgbe[0] = rgbe[1] = rgbe[2] = rgbe[3] = 0;
   } else {
     const { f, e } = frexp(v);
     const s = f/v * 256.0;
-    rgbe[start + 0] = red * s;
-    rgbe[start + 1] = green * s;
-    rgbe[start + 2] = blue * s;
-    rgbe[start + 3] = e + 128;
+    rgbe[0] = red * s;
+    rgbe[1] = green * s;
+    rgbe[2] = blue * s;
+    rgbe[3] = e + 128;
   }
-  return rgbe;
 }
 
 function write_hdr(x: number, y: number, data: Float32Array): Uint8Array {
@@ -91,7 +87,7 @@ function write_hdr_scanline(s: number[], width: number, ncomp: number, scratch: 
                 linear[0] = linear[1] = linear[2] = scanline[x*ncomp + 0];
                 break;
       }
-      float2rgbe(linear[0], linear[1], linear[2], rgbe);
+      float2rgbe(linear, rgbe);
       s.push(rgbe[0], rgbe[1], rgbe[2], rgbe[3]);
     }
   } else {
@@ -108,7 +104,7 @@ function write_hdr_scanline(s: number[], width: number, ncomp: number, scratch: 
                 linear[0] = linear[1] = linear[2] = scanline[x*ncomp + 0];
                 break;
       }
-      float2rgbe(linear[0], linear[1], linear[2], rgbe);
+      float2rgbe(linear, rgbe);
       scratch[x + width*0] = rgbe[0];
       scratch[x + width*1] = rgbe[1];
       scratch[x + width*2] = rgbe[2];
@@ -342,6 +338,7 @@ const HDRjs = Object.freeze({
   read: read,
   write: write_hdr,
   float2rgbe: float2rgbe,
+  rgbe2float: rgbe2float,
 });
 
 export default HDRjs;
