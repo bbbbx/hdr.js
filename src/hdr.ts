@@ -244,8 +244,6 @@ function save(float: Float32Array, width: number, height: number, filename: stri
   a.href = url;
   a.download = filename + '.hdr';
   a.rel = 'noopener'; // tabnabbing
-  // a.click();
-  URL.revokeObjectURL(url);
   setTimeout(function () { URL.revokeObjectURL(a.href) }, 4E4); // 40s
   setTimeout(function () { click(a) }, 0);
 
