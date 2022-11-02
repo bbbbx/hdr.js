@@ -13,7 +13,7 @@ module.exports = {
     },
     {
       name: 'HDRjs',
-      file: 'dist/hdr.esm.js',
+      file: 'dist/hdr.mjs',
       format: 'es',
       sourcemap: !isProduction,
     },

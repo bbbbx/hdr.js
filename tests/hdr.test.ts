@@ -1,7 +1,7 @@
 import { describe, test, expect } from '@jest/globals';
-import HDR from '../src/hdr';
+import HDRjs from '../src/hdr';
 
-describe('testing HDR', () => {
+describe('testing HDRjs', () => {
   const rgbe = new Uint8Array(4);
 
   const expectTest = [
@@ -11,14 +11,14 @@ describe('testing HDR', () => {
   ];
 
   expectTest.forEach(entry => {
-    test(`test HDR.float2rgbe: ${entry.float} equals ${entry.rgbe}`, () => {
-      HDR.float2rgbe(entry.float, rgbe);
+    test(`test HDRjs.float2rgbe: ${entry.float} equals ${entry.rgbe}`, () => {
+      HDRjs.float2rgbe(entry.float, rgbe);
       expect(rgbe).toEqual(entry.rgbe);
     });
 
-    test(`test HDR.rgbe2float: ${entry.rgbe} equals ${entry.float}`, () => {
+    test(`test HDRjs.rgbe2float: ${entry.rgbe} equals ${entry.float}`, () => {
       const float = new Float32Array(3);
-      HDR.rgbe2float(rgbe, float);
+      HDRjs.rgbe2float(rgbe, float);
 
       // diff: 10e-2/2 = 0.005
       const numDigits = 2;

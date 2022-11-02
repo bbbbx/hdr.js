@@ -4,6 +4,11 @@ function ldexp(f: number, e) {
   return f * Math.pow(2.0, e);
 }
 
+/**
+ * Convert 4 byte uint8 buffer to 3 channels float data
+ * @param rgbe input uint8 buffer
+ * @param float output float data
+ */
 function rgbe2float(rgbe: Uint8Array, float: Float32Array) {
   if (rgbe[3] !== 0) {
     const f1 = ldexp(1.0, rgbe[3] - (128+8));
@@ -15,6 +20,11 @@ function rgbe2float(rgbe: Uint8Array, float: Float32Array) {
   }
 }
 
+/**
+ * Convert 3 channels float data to 4 byte uint8 buffer
+ * @param float input float data
+ * @param rgbe output uint8 buffer
+ */
 function float2rgbe(float: Float32Array, rgbe: Uint8Array) {
   const red = float[0];
   const green = float[1];
@@ -32,6 +42,13 @@ function float2rgbe(float: Float32Array, rgbe: Uint8Array) {
   }
 }
 
+/**
+ * Write float data to RGBE(.hdr) file buffer
+ * @param x image width
+ * @param y image height
+ * @param data float data, RGB 3 channels.
+ * @returns file buffer
+ */
 function write_hdr(x: number, y: number, data: Float32Array): Uint8Array {
   const s: number[] = [];
   const comp = 3;
@@ -168,7 +185,16 @@ function write_run_data(s: number[], length: number, databyte: number): void {
   s.push(lengthbyte, databyte);
 }
 
-function load(url) {
+/**
+ * Load a RGBE(.hdr) file from URL.
+ * @param url the URL.
+ * @returns The promise of the resolved data.
+ */
+function load(url): Promise<{
+  width: number,
+  height: number,
+  rgbFloat: Float32Array,
+}> {
   return new Promise((
     resolve: (result: {
       width: number,
@@ -186,7 +212,7 @@ function load(url) {
 
     req.onload = () => {
       if (req.status >= 400) return reject('Load successfully, but HTTP status code >= 400, status: ' + req.status);
-      const parsed = read(new Uint8Array(req.response));
+      const parsed = read_hdr(new Uint8Array(req.response));
       typeof parsed === 'string' ? reject(parsed) : resolve(parsed);
     };
     req.onerror = (e) => {
@@ -196,6 +222,46 @@ function load(url) {
     req.open('GET', url, true);
     req.send();
   });
+}
+
+/**
+ * Save a hdr file to disk
+ * @param float float data, RGB 3 channels.
+ * @param width image width.
+ * @param height image height.
+ * @param filename file name.
+ * @returns Whether the save was successful
+ */
+function save(float: Float32Array, width: number, height: number, filename: string): boolean {
+  if (!(document?.createElement) || !(URL?.createObjectURL)) {
+    console.warn('NO document.createElement or URL.createObjectURL');
+    return false;
+  }
+
+  const uint8 = write_hdr(width, height, float);
+  const url = URL.createObjectURL(new Blob([ uint8 ]));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename + '.hdr';
+  a.rel = 'noopener'; // tabnabbing
+  // a.click();
+  URL.revokeObjectURL(url);
+  setTimeout(function () { URL.revokeObjectURL(a.href) }, 4E4); // 40s
+  setTimeout(function () { click(a) }, 0);
+
+  return true;
+}
+
+// `a.click()` doesn't work for all browsers (https://github.com/eligrey/FileSaver.js/issues/465)
+function click(node: HTMLAnchorElement) {
+  try {
+    node.dispatchEvent(new MouseEvent('click'));
+  } catch (e) {
+    var evt = document.createEvent('MouseEvents')
+    evt.initMouseEvent('click', true, true, window, 0, 0, 0, 80,
+                          20, false, false, false, false, 0, null);
+    node.dispatchEvent(evt);
+  }
 }
 
 function testMagic(uint8: Uint8Array, signature: string): boolean {
@@ -218,7 +284,17 @@ function isHdr(uint8: Uint8Array): boolean {
 
 const MAX_HEADER_LENGTH = 1024 * 10;
 const MAX_DIMENSIONS = 1 << 24;
-function read(uint8: Uint8Array) {
+
+/**
+ * Read a RGBE(.hdr) file from buffer
+ * @param uint8 RGBE(.hdr) file buffer
+ * @returns Failure reason or resolved data.
+ */
+function read_hdr(uint8: Uint8Array): string | {
+  rgbFloat: Float32Array;
+  width: number;
+  height: number;
+} {
   let header = '';
   let pos = 0;
 
@@ -335,7 +411,8 @@ function read(uint8: Uint8Array) {
 
 const HDRjs = Object.freeze({
   load: load,
-  read: read,
+  save: save,
+  read: read_hdr,
   write: write_hdr,
   float2rgbe: float2rgbe,
   rgbe2float: rgbe2float,
