@@ -12,6 +12,39 @@ npm install --save hdr.js
 
 ## Usage
 
+- [Load RGBE(.hdr) file](#load-rgbehdr-file):
+  ```ts
+  load(url: string): Promise<{
+    width: number;
+    height: number;
+    rgbFloat: Float32Array;
+  }>
+  ```
+- [Save RGBE(.hdr) file to disk](#save-rgbehdr-file-to-disk):
+  ```ts
+  save(float: Float32Array, width: number, height: number, filename: string): boolean
+  ```
+- [Read float point data from RGBE(.hdr) file buffer](#read-float-point-data-from-rgbehdr-file-buffer):
+  ```ts
+  read(uint8: Uint8Array): string | {
+    rgbFloat: Float32Array;
+    width: number;
+    height: number;
+  }
+  ```
+- [Write float point data to RGBE(.hdr) file buffer](#write-float-point-data-to-rgbehdr-file-buffer):
+  ```ts
+  write(x: number, y: number, data: Float32Array): Uint8Array
+  ```
+- [Compress 96 bits float RGB data to 32 bits rgbe](#compress-96-bits-float-rgb-data-to-32-bits-rgbe):
+  ```ts
+  float2rgbe(float: Float32Array, rgbe: Uint8Array)
+  ```
+- [Decompress 32 bits rgbe to 96 bits float RGB data](#decompress-32-bits-rgbe-to-96-bits-float-rgb-data):
+  ```ts
+  rgbe2float(rgbe: Uint8Array, float: Float32Array)
+  ```
+
 ### Load RGBE(.hdr) file
 
 ```js
@@ -88,4 +121,22 @@ const url = URL.createObjectURL(new Blob([ hdrFile ]));
 a.href = url;
 a.download = 'output.hdr';
 a.click();
+```
+
+### Compress 96 bits float RGB data to 32 bits rgbe
+
+```js
+const float = new Float32Array([0.3, 0.02, 0.1]);
+const rgbe = new Uint8Array(4);
+float2rgbe(float, rgbe);
+// rgbe is [153, 10, 51, 127]
+```
+
+### Decompress 32 bits rgbe to 96 bits float RGB data
+
+```js
+const rgbe = new Uint8Array([153, 10, 51, 127])
+const float = new Float32Array(3);
+rgbe2float(rgbe, float);
+// float is [ 0.298828125, 0.01953125, 0.099609375 ]
 ```

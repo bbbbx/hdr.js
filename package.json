@@ -1,6 +1,6 @@
 {
   "name": "hdr.js",
-  "version": "0.1.7",
+  "version": "0.2.0",
   "description": "RGBE(.hdr) file reader/writer.",
   "main": "dist/hdr.js",
   "module": "dist/hdr.mjs",

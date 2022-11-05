@@ -190,10 +190,10 @@ function write_run_data(s: number[], length: number, databyte: number): void {
  * @param url the URL.
  * @returns The promise of the resolved data.
  */
-function load(url): Promise<{
-  width: number,
-  height: number,
-  rgbFloat: Float32Array,
+function load(url: string): Promise<{
+  width: number;
+  height: number;
+  rgbFloat: Float32Array;
 }> {
   return new Promise((
     resolve: (result: {
