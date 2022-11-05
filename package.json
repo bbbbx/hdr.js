@@ -1,17 +1,17 @@
 {
-  "name": "hdr.js-demo",
-  "version": "1.0.0",
+  "name": "hdr-viewer",
+  "version": "0.1.0",
   "description": "",
   "scripts": {
-    "dev": "webpack --watch --devtool=inline-source-map",
+    "dev": "rm -rf dist && webpack --watch --devtool=inline-source-map",
     "build": "rm -rf dist && webpack --mode=production",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "hdr.js": "^0.1.5",
-    "toygl": "^0.0.1"
+    "hdr.js": "^0.1.7",
+    "toygl": "^0.0.3"
   },
   "devDependencies": {
     "html-webpack-plugin": "^5.5.0",

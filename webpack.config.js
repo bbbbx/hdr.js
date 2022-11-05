@@ -16,16 +16,24 @@ module.exports = {
           }
         ]
       },
+      {
+        test: /\.(frag|vert)$/,
+        type: 'asset/source',
+      },
+      {
+        test: /\.(hdr|png)$/,
+        type: 'asset/resource',
+      },
     ],
   },
   resolve: {
-    extensions: ['.ts', '.js']
+    extensions: ['.ts', '.js', '.frag', '.vert', 'hdr']
   },
   output: {
     filename: 'bundle.js',
     path: path.resolve(__dirname, 'dist'),
   },
   plugins: [new HtmlWebpackPlugin({
-    title: 'hdr.js demo'
+    title: 'RGBE(.hdr) file Viewer',
   })],
 };
