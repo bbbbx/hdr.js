@@ -46,11 +46,22 @@ const int _QUESTIONMARK_ = 63;
 
 uniform sampler2D uMiniFontTexture;
 
+int clamp(int value, int minValue, int maxValue) {
+  return value < minValue
+    ? minValue
+    : value > maxValue
+      ? maxValue
+      : value;
+}
+
 float SampleMiniFont(int InAsciiCode, ivec2 Position) {
-  int TextureCode = int(clamp(float(InAsciiCode), 32., 127.)) - 32;
-  return texture2D(uMiniFontTexture, vec2(
-    TextureCode * NATIVE_CHARACTER_RES + Position.x,
-    float(Position.y)) / vec2(NATIVE_CHARACTER_RES*(128-32), NATIVE_CHARACTER_RES)).r;
+  // Limit ASCII character to the Standard character set (32 - 127)
+  int TextureCode = clamp(InAsciiCode, 32, 127) - 32;
+  return texture2D(
+    uMiniFontTexture,
+    (vec2(TextureCode * NATIVE_CHARACTER_RES + Position.x, Position.y) + vec2(0.5)) / vec2(NATIVE_CHARACTER_RES * (127-32+1), NATIVE_CHARACTER_RES),
+    -1000.0
+  ).r;
 }
 
 
