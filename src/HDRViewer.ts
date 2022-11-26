@@ -72,7 +72,7 @@ class HDRViewer {
 
     // 
     this.pixelDataElem = document.createElement('div') as HTMLDivElement;
-    this.pixelDataElem.innerHTML = '&nbsp;';
+    this.pixelDataElem.innerHTML = '<span style="color: gray;">Right click or zoom in to inspect RGB values</span>';
     this.containerElem.appendChild(this.pixelDataElem);
 
     // 
@@ -188,7 +188,10 @@ class HDRViewer {
         blue,
       ];
 
-      this.pixelDataElem.innerText = `(${x}, ${y}) = (${pixelData.join(', ')})`;
+      const r = `<span style="color: red;">${pixelData[0]}</span>`;
+      const g = `<span style="color: green;">${pixelData[1]}</span>`;
+      const b = `<span style="color: blue;">${pixelData[2]}</span>`;
+      this.pixelDataElem.innerHTML = `(${x}, ${y}) = (${r}, ${g}, ${b})`;
     });
     this.canvas.addEventListener('pointerup', () => {
       this.pointerPressed = false;
